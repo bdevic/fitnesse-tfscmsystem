@@ -1,0 +1,135 @@
+<project name="TfsCmSystem" default="all" basedir=".">
+	<description>
+    PerforceCmSystem is a plugin for FitNesse, the wiki wrapper for fit, an acceptance test framework.
+  </description>
+
+	<property name="project.name" value="${ant.project.name}" />
+	<property name="version" value="0.4" />
+	<property name="src" location="src/main/java" />
+	<property name="test" location="src/test/java" />
+	<property name="classes" location="target/classes" />
+	<property name="test.classes" location="target/test-classes" />
+	<property name="lib" location="lib" />
+	<property name="zipDir" location="dist/${project.name}" />
+	<property name="results.dir" location="target/test-results" />
+
+	<path id="classpath">
+		<pathelement path="${classes}" />
+		<fileset dir="${lib}">
+			<include name="*.jar" />
+			<exclude name="dummy.jar" />
+		</fileset>
+	</path>
+	
+	<path id="test.classpath">
+		<path refid="classpath" />
+		<pathelement path="${test.classes}" />
+	</path>
+
+	<target name="all" depends="testbuild" description="Run this target any time you change code or acceptance tests. It will clean, then compile the source, run all the unit test and fintesse acceptance tests." />
+	
+	<target name="full" depends="clean, clean_dist, compile, unit_test, jar, copy_distribution, build_distribution" description="cleans and buiuld everything ready for distribution" /> 
+
+	<target name="build" depends="clean, compile" description="clean, then compile the source" />
+
+	<target name="testbuild" depends="clean, unit_test" description="builds code from scratch, runs all the unit tests and acceptance tests" />
+
+	<target name="build_distribution" depends="zip_src, zip_bin" description="The thing you do when distributing a new release." />
+
+	<target name="assemble_bin" depends="clean_dist, jar, copy_distribution" description="create the binary distribution" />
+
+	<target name="copy_distribution" description="just copy the files into dist">
+		<tstamp />
+		<copy todir="dist/${project.name}">
+			<fileset dir="extra/release" includes="**" />
+			<fileset dir="dist" includes="${project.name}-${version}.jar" />
+		</copy>
+	</target>
+
+	<target name="zip_bin" depends="assemble_bin" description="zip up the binary distribution">
+		<tstamp />
+		<zip zipfile="dist/${project.name}-${version}-${DSTAMP}.zip">
+			<fileset dir="${basedir}/dist">
+    			<include name="${project.name}/**"/>
+			</fileset>
+		</zip>
+	</target>
+
+	<target name="zip_src" depends="clean_dist" description="Packages all the source into a .zip file">
+		<tstamp />
+		<zip zipfile="dist/${project.name}-${version}_src-${DSTAMP}.zip">
+			<fileset dir="${basedir}">
+				<include name="src/**" />
+				<include name="lib/**" />
+				<include name="extra/**" />
+				<include name="build.xml" />
+				<exclude name="**/${project.name}*.zip" />
+			</fileset>
+		</zip>
+	</target>
+
+	<target name="jar" depends="build" description="generate the jar file">
+		<mkdir dir="dist" />
+		<delete file="dist/${project.name}-${version}.jar" />
+
+		<jar jarfile="dist/${project.name}-${version}.jar" basedir="${classes}">
+			<include name="**/*.class" />
+			<exclude name="**/*Test.class" />
+			<exclude name="**/*Test$*.class" />
+			<exclude name="**/*TestSuite.class" />
+			<exclude name="**/*TestSuite$*.class" />
+			<manifest>
+				<attribute name="Built-By" value="Mike Scott" />
+			</manifest>
+		</jar>
+		<delete dir="${classes}" />
+	</target>
+
+	<target name="compile" depends="init" description="compile the source (make)">
+		<javac srcdir="${src}" destdir="${classes}" classpathref="classpath" debug="true" />
+		<javac srcdir="${test}" destdir="${test.classes}" debug="true">
+			<classpath refid="test.classpath" />
+		</javac>
+	</target>
+
+	<target name="clean" description="delete everything in the classes directory">
+		<delete dir="${classes}" />
+		<delete dir="${test.classes}" />
+		<mkdir dir="${classes}" />
+		<mkdir dir="${test.classes}" />
+		<delete dir="${results.dir}" />
+	</target>
+
+	<target name="unit_test" depends="compile" description="run the unit tests">
+		<junit fork="yes" printsummary="no" haltonfailure="yes" haltonerror="yes" dir="${basedir}">
+			<classpath refid="test.classpath" />
+			<formatter type="xml" usefile="true" />
+			<formatter type="plain" usefile="false" />
+			<batchtest todir="${results.dir}">
+				<fileset dir="${test}">
+					<include name="**/*Test.java" />
+				</fileset>
+			</batchtest>
+		</junit>
+	</target>
+
+	<target name="clean_dist" description="clean out the distribution folder">
+		<mkdir dir="dist" />
+		<delete>
+			<fileset dir="dist">
+				<include name="${project.name}*.zip" />
+				<include name="${project.name}*.jar" />
+			</fileset>
+		</delete>
+		<delete dir="dist/${project.name}" />
+	</target>
+
+	<target name="init">
+		<mkdir dir="${classes}" />
+		<mkdir dir="${test.classes}" />
+		<mkdir dir="${results.dir}" />
+	</target>
+
+	<target name="release" depends="testbuild, build_distribution" />
+
+</project>
